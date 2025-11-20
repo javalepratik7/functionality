@@ -1,0 +1,48 @@
+# Node modules
+node_modules/
+
+# Env files (Never push secrets)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Redis dump files (if Redis persistence is ON)
+dump.rdb
+appendonly.aof
+
+# Build output
+dist/
+build/
+
+# VSCode settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage reports
+coverage/
+
+# PM2 logs and config
+.pids
+*.pid
+*.seed
+*.pid.lock
+
+# Docker stuff
+docker-data/
