@@ -1,3 +1,14 @@
+🔑 Generate AWS Access Key (Short Steps)
+
+Login → https://console.aws.amazon.com
+Search IAM → Open it
+Users → Create user → name it → Next
+Attach policies directly → select required policy → Create user
+Open user → Security credentials
+Create access key → choose Application outside AWS / CLI
+Copy AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY (save it!)
+
+
 # AWS IAM (Identity and Access Management) Implementation Guide
 
 This comprehensive guide explains what AWS IAM is, why it's critical for security, and how to properly implement it in your application.
