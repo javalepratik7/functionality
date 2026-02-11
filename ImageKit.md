@@ -2660,6 +2660,8 @@ CLIENT_URL=https://your-frontend-domain.com
 - [React Documentation](https://react.dev/)
 - [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
 
+- [youtube] (https://www.youtube.com/watch?v=Xq9ZN1kUkMA)
+
 ---
 
 ## License
