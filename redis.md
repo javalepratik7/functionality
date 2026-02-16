@@ -91,6 +91,12 @@ PONG
 
 # #️⃣ 4. **Redis CLI Basics**
 
+### **GO in REdis**
+
+```
+redis-cli
+```
+
 ### **Set a key**
 
 ```
