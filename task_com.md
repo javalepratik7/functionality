@@ -1,12 +1,3 @@
-Good question.
-
-Now you’re thinking correctly:
-
-> “Before solving system design problems, what concepts must I master?”
-
-I’ll give you a **structured roadmap** — not random buzzwords.
-
-This is the **complete system design concept checklist** for 15–30 LPA backend roles.
 
 ---
 
@@ -257,3 +248,28 @@ If you want, I can:
 * Or start drilling one category deeply (like distributed systems)
 
 Your move.
+
+
+
+1️⃣ Event Sourcing
+
+Instead of storing current state, store events.
+
+2️⃣ CQRS
+
+Separate read and write models.
+
+3️⃣ Service Mesh (Istio basics)
+
+For microservices at scale.
+
+4️⃣ Backpressure handling
+
+When downstream service is slow.
+
+5️⃣ Consensus algorithms (basic idea)
+
+Raft, Paxos (not deep math — conceptual).
+
+6️⃣ Data replication lag handling
+7️⃣ Multi-tenant scaling at 10k tenants
