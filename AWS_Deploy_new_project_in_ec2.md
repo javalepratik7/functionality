@@ -198,6 +198,18 @@ pm2 save
 
 ---
 
+
+## 🌐 Part 10 — Create Sub Domian in Godaddy
+
+```
+-> Login 
+-> Access Now 
+-> select UG brands 
+-> Domain (side bar navigation) 
+-> DNS -> Add new record 
+-> type A  - Name sub domain name - value IP address of server
+```
+
 ## 🌐 Part 10 — Configure NGINX
 
 This server uses **`/etc/nginx/sites-available/`** (Ubuntu standard — not `conf.d`).
@@ -295,8 +307,8 @@ Run certbot for **each subdomain separately**:
 
 ```bash
 sudo certbot -d <domain.com>   frontend and backend urls
-sudo certbot --nginx -d po-dashboard.ugbrands.in
-sudo certbot --nginx -d api.po-dashboard.ugbrands.in
+sudo certbot  -d po-dashboard.ugbrands.in
+sudo certbot  -d api.po-dashboard.ugbrands.in
 ```
 
 Follow the prompts — choose **redirect HTTP to HTTPS** when asked.
