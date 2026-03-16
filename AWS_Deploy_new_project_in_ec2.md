@@ -447,4 +447,41 @@ sudo certbot --nginx -d <domain>    # issue/renew SSL
 
 ---
 
+```
+1)ssh -i ./urbangabru-prod-server.pem ubuntu@34.228.123.37
+2)cd ug-codebase
+3)mkdir <PROJECT NAME>
+4)cd <PROJECT NAME>
+5)git clone git@gitlab.com:urbangabru-tech-group/ecom-po/frontend.git
+6)git clone git@gitlab.com:urbangabru-tech-group/ecom-po/backend.git
+7)cd frontend
+8)npm i
+9)cd ../backend/
+10)npm i
+11)nano .env    (past backend env)
+12)cd ../frontend/
+13)nano .env    (past backend env)
+14)pm2 start server.js --name <PROJECT NAME ON PM2 >
+15)pm2 logs 35
+16)npm run build
+17)pm2 start npx --name <PROJECT NAME ON PM2 > -- serve -s dist -l <PORT>
+```
+For frontend
+```
+18)sudo nano /etc/nginx/sites-available/<DOMAIN.COM> 
+19)sudo ln -s /etc/nginx/sites-available/ecom-po.ugbrands.in /etc/nginx/sites-enabled/
+20)sudo nginx -t
+21)sudo systemctl restart nginx
+```
+For backend
+```
+22)cd ../backend/
+23)sudo nano /etc/nginx/sites-available/<DOMAIN.COM> 
+24)sudo ln -s /etc/nginx/sites-available/api.ecom-po.ugbrands.in /etc/nginx/sites-enabled/
+25)sudo nginx -t
+26)sudo systemctl restart nginx
+27)sudo certbot  -d <FRONETND DOMAIN.COM> -d <BACKEND DOMAIN.COM>
+28)pm2 restart 35 36
+```
+
 ✔ **Deployment complete!**
