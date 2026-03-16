@@ -47,14 +47,14 @@ These variables are used inside `.gitlab-ci.yml` and are kept secret (not commit
 
 | Variable Name | Example Value | Notes |
 |---|---|---|
-| `EC2_IP_PRODUCTION` | `34.228.123.37` | Your EC2 public IP |
-| `SSH_KEY_PRODUCTION` | *(paste private .pem key content)* | Set as **File** type, masked |
 | `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/backend` | From `pwd` in backend folder |
 | `PM2_APP_NAME_PRODUCTION` | `po-dashboard-backend` | Must match the name used in `pm2 start` |
 | `BACKEND_PORT_PRODUCTION` | `3032` | Port backend runs on |
 | `ENV_FILE_PRODUCTION` | *(paste full .env file content)* | Masked, protected |
 | `ENV_SERVER_FILE_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/backend/.env` | Full path to .env on server |
 | `BRANCH_PRODUCTION` | `main` | Branch to deploy from |
+| `EC2_IP_PRODUCTION` | `34.228.123.37` | Your EC2 public IP |
+| `SSH_KEY_PRODUCTION` | *(paste private .pem key content)* | Set as **File** type, masked |
 
 ---
 
@@ -62,11 +62,13 @@ These variables are used inside `.gitlab-ci.yml` and are kept secret (not commit
 
 | Variable Name | Example Value | Notes |
 |---|---|---|
-| `EC2_IP_PRODUCTION` | `34.228.123.37` | Same EC2 IP |
-| `SSH_KEY_PRODUCTION` | *(paste private .pem key content)* | Set as **File** type, masked |
-| `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/frontend` | From `pwd` in frontend folder |
+| `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/frontend` | From `pwd` in backend folder |
 | `PM2_APP_NAME_PRODUCTION` | `po-dashboard-frontend` | Must match the name used in `pm2 start` |
-| `FRONTEND_PORT_PRODUCTION` | `3033` | Port frontend runs on |
+| `BACKEND_PORT_PRODUCTION` | `3033` | Port backend runs on |
+| `ENV_FILE_PRODUCTION` | *(paste full .env file content)* | Masked, protected |
+| `ENV_SERVER_FILE_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/frontend/.env` | Full path to .env on server |
+| `EC2_IP_PRODUCTION` | `34.228.123.37` | Same EC2 IP |]
+| `PM2_APP_NAME_PRODUCTION` | `po-dashboard-frontend` | Must match the name used in `pm2 start` |
 | `BRANCH_PRODUCTION` | `main` | Branch to deploy from |
 
 > 💡 **How to get PROJECT_PATH_PRODUCTION:** SSH into EC2, `cd` into the project folder, and run `pwd`. Copy the output.
@@ -226,7 +228,7 @@ deploy_backend_production:
         npm ci --omit=dev;
 
         echo '♻️ Restarting PM2 app...';
-        pm2 restart $PM2_APP_NAME_PRODUCTION || pm2 start <START FILE NAME>.js --name $PM2_APP_NAME_PRODUCTION
+        pm2 restart $PM2_APP_NAME_PRODUCTION || pm2 start server.js --name $PM2_APP_NAME_PRODUCTION
 
         echo '✅ Backend deployed successfully on port $BACKEND_PORT_PRODUCTION';
       "
@@ -240,6 +242,7 @@ deploy_backend_production:
 ### File 2: `script-backend.sh`
 
 ```bash#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # This script is uploaded by CI to the remote EC2 host and executed there.
