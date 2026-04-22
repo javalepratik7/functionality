@@ -1,87 +1,88 @@
-# 🔄 GitLab CI/CD Setup Guide — UG Codebase
-
-This guide covers setting up **automated deployments** for both Frontend and Backend projects using GitLab CI/CD pipelines.
+# 🚀 GitLab CI/CD Deployment Guide
 
 ---
 
-## 📋 Overview
+## 1. SSH Key Setup (EC2 → GitLab)
 
-When code is pushed to `main`, GitLab CI/CD will automatically:
-- SSH into the EC2 server
-- Pull the latest code
-- Install dependencies & build
-- Restart the PM2 process
+### Check existing SSH key on EC2
 
----
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
 
-## 🌍 Part 1 — Create Deployment Environment in GitLab
+If the key doesn't exist, generate one:
 
-This links your CI/CD pipeline to a named environment (e.g., `production`).
+```bash
+ssh-keygen -t ed25519 -C "ec2-gitlab-deploy-key"
+# Press ENTER for default path, leave passphrase empty
+```
 
-### Steps:
+Copy the public key:
 
-1. Go to **`urbangabru-tech-group`**
-2. Open your project (e.g., `ecom-po → frontend`)
-3. In the left sidebar → **Operate → Environments**
-4. Click **New environment**
-5. Set name as `production` → Click **Save**
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
 
-> Repeat this for both Frontend and Backend repos.
+### Add Deploy Key to GitLab
 
----
+Go to: **GitLab → Repo → Settings → Repository → Deploy Keys**
 
-## 🔐 Part 2 — Add CI/CD Variables in GitLab
+- Title: `ec2-server`
+- Key: paste the public key output
+- Enable write access only if the pipeline needs to push
 
-These variables are used inside `.gitlab-ci.yml` and are kept secret (not committed to code).
+Test the connection:
 
-### Where to add:
-
-1. Go to **`urbangabru-tech-group-2 → po-dashbord → backend`** (or frontend)
-2. Left sidebar → **Settings → CI/CD**
-3. Expand **Variables** section
-4. Click **Add variable** for each one below
-
----
-
-### Variables to add — Backend
-
-| Variable Name | Example Value | Notes |
-|---|---|---|
-| `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/backend` | From `pwd` in backend folder |
-| `PM2_APP_NAME_PRODUCTION` | `po-dashboard-backend` | Must match the name used in `pm2 start` |
-| `BACKEND_PORT_PRODUCTION` | `3032` | Port backend runs on |
-| `ENV_FILE_PRODUCTION` | *(paste full .env file content)* | Masked, protected |
-| `ENV_SERVER_FILE_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/backend/.env` | Full path to .env on server |
-| `BRANCH_PRODUCTION` | `main` | Branch to deploy from |
-| `EC2_IP_PRODUCTION` | `34.228.123.37` | Your EC2 public IP |
-| `SSH_KEY_PRODUCTION` | *(paste private .pem key content)* | Set as **File** type, masked |
+```bash
+ssh -T git@gitlab.com
+# Expected: Welcome to GitLab, @username!
+```
 
 ---
 
-### Variables to add — Frontend
+## 2. Group-Level CI/CD Variables
 
-| Variable Name | Example Value | Notes |
-|---|---|---|
-| `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/frontend` | From `pwd` in backend folder |
-| `PM2_APP_NAME_PRODUCTION` | `po-dashboard-frontend` | Must match the name used in `pm2 start` |
-| `BACKEND_PORT_PRODUCTION` | `3033` | Port backend runs on |
-| `ENV_FILE_PRODUCTION` | *(paste full .env file content)* | Masked, protected |
-| `ENV_SERVER_FILE_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/po-dashboard/frontend/.env` | Full path to .env on server |
-| `EC2_IP_PRODUCTION` | `34.228.123.37` | Same EC2 IP |]
-| `PM2_APP_NAME_PRODUCTION` | `po-dashboard-frontend` | Must match the name used in `pm2 start` |
-| `BRANCH_PRODUCTION` | `main` | Branch to deploy from |
+Go to: **GitLab → Group → Settings → CI/CD → Variables**
 
-> 💡 **How to get PROJECT_PATH_PRODUCTION:** SSH into EC2, `cd` into the project folder, and run `pwd`. Copy the output.
+Set **Environment** to `All (default)` for each variable.
 
----
+| Variable | Value |
+|---|---|
+| `BRANCH_PRODUCTION` | `main` |
+| `DEPLOY_ENV_PRODUCTION` | `prod` |
+| `EC2_IP_PRODUCTION` | `3.211.91.14` |
+| `NGINX_SERVICE_NAME_PRODUCTION` | `nginx` |
+| `SSH_KEY_PRODUCTION` | *(paste full private key including BEGIN/END lines)* |
 
-## 📄 Part 3 — Frontend CI/CD Files
-
-Add these **two files** to the root of your **Frontend repo**:
+> **Note:** For `SSH_KEY_PRODUCTION`, paste the full contents of `~/.ssh/id_ed25519` (private key) from your EC2 instance. Mark it as **Protected** and **Masked**.
 
 ---
 
-### File 1: `.gitlab-ci.yml`
+## 3. Project-Level Setup
+
+### Create Environment
+
+Go to: **Project → Operate → Environments → New Environment**
+
+- Name: `production`
+
+---
+
+### 3A. Frontend Variables
+
+Go to: **Project → Settings → CI/CD → Variables**
+
+| Variable | Example Value |
+|---|---|
+| `DOMAIN_NAME` | `npd-dashboard.ugbrands.in` |
+| `ENV_FILE_PRODUCTION` | `VITE_API_BASE_URL=https://api.npd-dashboard.ugbrands.in/api/v1` |
+| `ENV_SERVER_FILE_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/npd-dashbord/frontend/.env` |
+| `NGINX_ROOT_PATH` | `/var/www/online-ops-inventory-frontend/` |
+| `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/npd-dashbord/frontend` |
+
+> **Note:** Get the exact paths using `pwd` inside the project directory on EC2. NGINX_ROOT_PATH also you can take help of `sudo cp -rf /home/ubuntu/ug-codebase/online-operations-inventory-dashboard/frontend/dist/* /var/www/online-ops-inventory-frontend/`
+
+### Frontend `.gitlab-ci.yml`
 
 ```yaml
 stages:
@@ -89,7 +90,6 @@ stages:
 
 variables:
   NODE_VERSION: "22"
-  # Frontend runs on port 3027 (configured in vite.config.js and PM2_APP_NAME_PRODUCTION environment variable)
 
 deploy_production:
   stage: deploy
@@ -98,75 +98,77 @@ deploy_production:
     - master
 
   before_script:
-    # Install SSH client if missing
+    # Install SSH client
     - 'which ssh-agent || (apt-get update -y && apt-get install openssh-client -y)'
 
-    # Start SSH agent and add private key
+    # Setup SSH key
     - eval $(ssh-agent -s)
     - echo "$SSH_KEY_PRODUCTION" | tr -d '\r' | ssh-add -
 
-    # Setup known hosts for EC2
+    # Add EC2 to known hosts
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - ssh-keyscan -H "$EC2_IP_PRODUCTION" >> ~/.ssh/known_hosts
 
   script:
-    - echo "🚀 Deploying production build to EC2..."
+    - echo "🚀 Deploying frontend to EC2 via Nginx..."
+
     - |
       ssh -o StrictHostKeyChecking=no ubuntu@$EC2_IP_PRODUCTION "
-        export NVM_DIR=~/.nvm &&
-        source ~/.nvm/nvm.sh &&
-        nvm use ${NODE_VERSION} &&
-        cd ${PROJECT_PATH_PRODUCTION} &&
-        echo '🔄 Pulling latest code...' &&
-        git fetch origin ${BRANCH_PRODUCTION} &&
-        git reset --hard origin/${BRANCH_PRODUCTION} &&
-        echo '📦 Installing dependencies...' &&
-        npm ci &&
-        echo '🏗️  Building production files...' &&
-        npm run build &&
-        echo '🚦 Restarting frontend using PM2...' &&
-        pm2 restart ${PM2_APP_NAME_PRODUCTION} || pm2 serve dist ${FRONTEND_PORT_PRODUCTION} --name ${PM2_APP_NAME_PRODUCTION} --spa &&
-        pm2 save &&
-        echo '✅ Deployment complete!'
+        set -e
+
+        echo '📁 Moving to project directory...'
+        cd ${PROJECT_PATH_PRODUCTION}
+
+        echo '🔄 Pulling latest code...'
+        git fetch origin ${BRANCH_PRODUCTION}
+        git reset --hard origin/${BRANCH_PRODUCTION}
+
+        echo '🧹 Cleaning old build...'
+        rm -rf dist
+
+        node -v
+        npm -v
+
+        echo '📦 Installing dependencies...'
+        npm ci
+
+        echo '📝 Creating .env file...'
+        echo \"$ENV_FILE_PRODUCTION\" > .env
+
+        echo '🏗️ Building project...'
+        npm run build
+
+        echo '📂 Deploying to Nginx directory...'
+        sudo rm -rf ${NGINX_ROOT_PATH}/*
+        sudo cp -r dist/* ${NGINX_ROOT_PATH}/
+
+        echo '🔄 Reloading Nginx...'
+        sudo systemctl reload nginx
+
+        echo '✅ Frontend deployed successfully!'
       "
 
   environment:
     name: production
-    url: http://${EC2_IP_PRODUCTION}:${FRONTEND_PORT_PRODUCTION}
+    url: http://${DOMAIN_NAME}
 ```
 
 ---
 
-### File 2: `script-frontend.sh`
+### 3B. Backend Variables
 
-```bash
-frontend_deploy:
-  stage: deploy
-  image: alpine:3.18
-  before_script:
-    - apk add --no-cache openssh-client
-    - mkdir -p ~/.ssh
-    - echo "$SSH_KEY_PRODUCTION" > ~/.ssh/deploy_key
-    - chmod 600 ~/.ssh/deploy_key
-  script:
-    - scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no script-frontend.sh ubuntu@${EC2_IP_PRODUCTION}:/tmp/deploy_frontend.sh
-    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${EC2_IP_PRODUCTION} "bash /tmp/deploy_frontend.sh"
-  only:
-    - main
-  environment:
-    name: production
-```
+Go to: **Project → Settings → CI/CD → Variables**
 
----
+| Variable | Example Value |
+|---|---|
+| `BACKEND_PORT_PRODUCTION` | `5000` |
+| `ENV_FILE_PRODUCTION` | `PORT=5000\nDB_HOST=127.0.0.1\n...` |
+| `ENV_SERVER_FILE_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/npd-dashbord/backend/.env` |
+| `PM2_APP_NAME_PRODUCTION` | `npd-dashbord-backend` |
+| `PROJECT_PATH_PRODUCTION` | `/home/ubuntu/ug-codebase/npd-dashbord/backend` |
 
-## 📄 Part 4 — Backend CI/CD Files
-
-Add these **two files** to the root of your **Backend repo**:
-
----
-
-### File 1: `.gitlab-ci.yml`
+### Backend `.gitlab-ci.yml`
 
 ```yaml
 stages:
@@ -179,6 +181,8 @@ stages:
 check_env_variables:
   stage: precheck
   image: alpine:latest
+  only:
+    - main
   environment: production
   script:
     - echo "Checking required CI/CD environment variables..."
@@ -192,6 +196,8 @@ check_env_variables:
 check_lock_file:
   stage: precheck
   image: node:22
+  only:
+    - main
   environment: production
   script:
     - echo "Checking for lock file..."
@@ -239,145 +245,107 @@ deploy_backend_production:
 
 ---
 
-### File 2: `script-backend.sh`
+## 4. EC2 Prerequisites Checklist
 
-```bash#!/usr/bin/env bash
-#!/usr/bin/env bash
-set -euo pipefail
+Before the pipeline runs, confirm these are set up on your EC2 instance:
 
-# This script is uploaded by CI to the remote EC2 host and executed there.
-# Environment variables should be set by CI/CD pipeline
-
-REPO_URL="${REPO_URL:-}"
-PROJECT_DIR="${PROJECT_DIR:-}"
-BRANCH="${GIT_BRANCH:-main}"
-
-if [ -z "$REPO_URL" ] || [ -z "$PROJECT_DIR" ]; then
-  echo "Error: REPO_URL and PROJECT_DIR must be set"
-  exit 1
-fi
-
-echo "Running remote bootstrap script"
-
-mkdir -p "$PROJECT_DIR"
-cd "$PROJECT_DIR"
-
-if [ -d .git ]; then
-  echo "Existing repo found. Fetching and resetting to origin/${BRANCH}"
-  git fetch origin
-  git reset --hard origin/${BRANCH}
-  git clean -fd
-else
-  echo "Cloning repository ${REPO_URL} into ${PROJECT_DIR}"
-  git clone --branch ${BRANCH} ${REPO_URL} .
-fi
-
-echo "Installing node and npm if missing (apt-get assumed)."
-if ! command -v node >/dev/null 2>&1; then
-  if command -v apt-get >/dev/null 2>&1; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-  else
-    echo "No apt-get found. Ensure node is installed manually."
-  fi
-fi
-
-echo "Installing dependencies (production)..."
-npm ci --production || npm install --production
-
-echo "Ensuring pm2 is installed..."
-if ! command -v pm2 >/dev/null 2>&1; then
-  sudo npm install -g pm2
-fi
-
-echo "Starting or reloading app via pm2"
-if pm2 describe "${PM2_APP_NAME}" >/dev/null 2>&1; then
-  pm2 reload "${PM2_APP_NAME}" || pm2 restart "${PM2_APP_NAME}"
-else
-  pm2 start server.js --name "${PM2_APP_NAME}"
-fi
-pm2 save
-
-echo "Remote bootstrap finished."
-```
+- [ ] Node.js installed (`node -v`)
+- [ ] PM2 installed globally (`pm2 -v`)
+- [ ] Nginx installed and running (`sudo systemctl status nginx`)
+- [ ] Project repo already cloned at the configured `PROJECT_PATH_PRODUCTION`
+- [ ] Nginx root directory exists (`sudo mkdir -p /var/www/your-frontend-dir/`)
+- [ ] `ubuntu` user has passwordless sudo for nginx reload and file copy (see note in frontend section)
+- [ ] `.env` file permissions secured: `chmod 600 .env`
 
 ---
 
-## 🗂️ Final File Structure
-
-Your repos should look like this after adding CI/CD files:
+## 5. Architecture Overview
 
 ```
-frontend/
-├── .gitlab-ci.yml        ← CI/CD pipeline config
-├── script-frontend.sh    ← Deploy script uploaded to EC2
-├── src/
-├── public/
-├── package.json
-└── vite.config.js
+GitLab Push → CI/CD Pipeline → SSH into EC2 → Pull Code → Build → Deploy
 
-backend/
-├── .gitlab-ci.yml        ← CI/CD pipeline config
-├── script-backend.sh     ← Bootstrap script for EC2
-├── index.js / server.js
-├── package.json
-└── .env                  ← Never commit this!
+Frontend:  git pull → npm ci → npm run build → copy dist → nginx reload
+Backend:   git pull → npm ci → write .env → pm2 restart
 ```
 
----
-
-## ▶️ Part 5 — How to Trigger a Deployment
-
-Once CI/CD is set up, deployments are **automatic**:
-
+## 6. Reference 
+check all dist files
 ```
-Push to main branch → GitLab detects push → Pipeline starts → EC2 is updated automatically
+ls /var/www/
+or
+cd /var/www
+```
+in this you will see like 
+```
+html  npd-frontend  online-ops-inventory-frontend
+```
+our frontend folders which contains their path and in the folder contain dist files 
+```
+cd /var/www
+cd online-ops-inventory-frontend/
+ls
+```
+and this path is given to the nginx file for that domain 
+```
+cd /etc/nginx/sites-available/
 ```
 
-To monitor a running pipeline:
-1. Go to your GitLab repo
-2. Left sidebar → **Build → Pipelines**
-3. Click on the latest pipeline to see live logs
+you will get like 
+```
+api.npd-dashboard.ugbrands.in  api.online-ops-inventory-dashboard.ugbrands.in  default  npd-frontend  online-ops-inventory-dashboard.ugbrands.in
+```
+our all nginx setups and you can check in that nginx file 
+```
+nano npd-frontend
+```
+```
+server {
+    listen 80;
+    server_name npd-dashboard.ugbrands.in;
 
----
+    root /var/www/npd-frontend;
+    index index.html;
 
-## 🛠️ Troubleshooting CI/CD
+    location / {
+        try_files $uri /index.html;
+    }
+}
+```
+and with ssl certificate ( certbot ) it will looks like 
+```
+server {
+    server_name npd-dashboard.ugbrands.in;
 
-### ❌ Pipeline fails at SSH step
-- Check that `SSH_KEY_PRODUCTION` variable is set correctly
-- The key must be the **private key** (contents of your `.pem` file)
-- Make sure it's set as type **Variable** (not File) — or File, consistently with how the pipeline reads it
+    root /var/www/npd-frontend;
+    index index.html;
 
-### ❌ `Permission denied (publickey)`
-- The public key for the EC2 instance must be in `~/.ssh/authorized_keys` on the server
-- Run on EC2: `cat ~/.ssh/authorized_keys` to verify
+    location / {
+        try_files $uri /index.html;
+    }
 
-### ❌ `pm2: command not found` on EC2
-- nvm-installed pm2 may not be in PATH during SSH sessions
-- Add to the SSH command: `export NVM_DIR=~/.nvm && source ~/.nvm/nvm.sh &&` before `pm2`
+    # cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|svg|ico)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
 
-### ❌ `git reset --hard` fails
-- The EC2 server may have local uncommitted changes (e.g., a manually edited `.env`)
-- The `.env` file must not be tracked by git — confirm `.gitignore` includes `.env`
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/npd-dashboard.ugbrands.in/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/npd-dashboard.ugbrands.in/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 
-### ❌ Variables not found in pipeline
-- Go to **Settings → CI/CD → Variables** and confirm all required variables are saved
-- Check that variable names match exactly (case-sensitive)
+}
+server {
+    if ($host = npd-dashboard.ugbrands.in) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
 
-### ❌ `npm ci` fails
-- `package-lock.json` is missing from the repo
-- Run `npm install` locally, commit `package-lock.json`, and push
 
----
+    listen 80;
+    server_name npd-dashboard.ugbrands.in;
+    return 404; # managed by Certbot
 
-## 📎 Notes
 
-- **Never commit `.env` files** — add `.env` to `.gitignore` in both repos
-- `ENV_FILE_PRODUCTION` stores the full contents of `.env` as a CI/CD variable — this is how the pipeline writes the `.env` file on the server during deploy
-- `git reset --hard origin/main` is used instead of `git pull` to avoid merge conflicts on the server
-- `pm2 save` is called after every restart to persist the process list across server reboots
-- Backend runs 2 stages: **precheck** (validates variables + lock file) then **deploy** — frontend skips precheck for speed
-
----
-
-✔ **CI/CD setup complete! Pushes to `main` will now auto-deploy.**
+}
+```
