@@ -1,6 +1,6 @@
-# 🚀 AWS EC2 + Nginx + Node.js Deployment Guide (Production Ready)
+# 🚀 AWS EC2 + Nginx + Node.js + React Deployment Guide (Production Ready)
 
-This document explains how to deploy a Node.js backend on AWS EC2 using PM2, Nginx, SSH keys, GitLab private repo access, domain mapping, and SSL (HTTPS) with Certbot.
+This document explains how to deploy a **Node.js backend** and **React frontend** on AWS EC2 using PM2, Nginx, SSH keys, GitLab private repo access, domain mapping, and SSL (HTTPS) with Certbot.
 
 ---
 
@@ -151,7 +151,7 @@ git clone git@gitlab.com:your-group/your-repo.git
 
 ---
 
-# 📦 5. PROJECT SETUP
+# 📦 5. PROJECT SETUP (BACKEND)
 
 ```bash
 mkdir -p ~/ug-codebase
@@ -179,6 +179,12 @@ DB_PASSWORD=your_password
 DB_NAME=npd_dashboard
 ```
 
+Secure the file:
+
+```bash
+chmod 600 .env
+```
+
 ---
 
 # 🧪 7. TEST APPLICATION
@@ -198,11 +204,11 @@ pm2 save
 pm2 startup
 ```
 
-Run suggested sudo command
+Run the suggested `sudo` command shown after `pm2 startup`
 
 ---
 
-# 🌐 9. NGINX SETUP
+# 🌐 9. NGINX SETUP — BACKEND
 
 ```bash
 sudo nano /etc/nginx/sites-available/api.npd-dashboard.ugbrands.in
@@ -231,26 +237,163 @@ Enable:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/api.npd-dashboard.ugbrands.in /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
 ---
 
-# 🌍 10. DOMAIN SETUP
+# 🖥️ 10. FRONTEND DEPLOYMENT (React Build + Nginx)
+
+## Step 1: Clone Frontend Repo
+
+```bash
+cd /var/www
+sudo git clone git@gitlab.com:your-repo/online-ops-inventory-frontend.git
+cd online-ops-inventory-frontend
+ls
+```
+
+> 💡 If you see `package.json`, you're in the right place.
+
+---
+
+## Step 2: Install Dependencies
+
+```bash
+sudo npm install
+```
+
+---
+
+## Step 3: Set Frontend ENV (if needed)
+
+```bash
+sudo nano .env
+```
+
+Example:
+
+```env
+REACT_APP_API_URL=https://api.npd-dashboard.ugbrands.in
+```
+
+---
+
+## Step 4: Build the React App
+
+```bash
+sudo npm run build
+```
+
+This creates a `build/` folder with static files.
+
+---
+
+## Step 5: Copy Build to Web Root
+
+```bash
+sudo mkdir -p /var/www/npd-frontend
+sudo cp -r build/* /var/www/npd-frontend/
+```
+
+Set correct permissions so Nginx can read files:
+
+```bash
+sudo chown -R www-data:www-data /var/www/npd-frontend
+sudo chmod -R 755 /var/www/npd-frontend
+```
+
+---
+
+## Step 6: Nginx Config for Frontend
+
+```bash
+sudo nano /etc/nginx/sites-available/npd-dashboard.ugbrands.in
+```
+
+```nginx
+server {
+    listen 80;
+    server_name npd-dashboard.ugbrands.in;
+
+    root /var/www/npd-frontend;
+    index index.html;
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # Optional: Cache static assets for performance
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Optional: Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+}
+```
+
+Enable the site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/npd-dashboard.ugbrands.in /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+## Step 7: SSL for Frontend Domain
+
+```bash
+sudo certbot --nginx -d npd-dashboard.ugbrands.in
+```
+
+---
+
+## Step 8: Re-deploy Frontend (After Code Changes)
+
+Whenever there is a code update, re-deploy like this:
+
+```bash
+cd /var/www/online-ops-inventory-frontend
+sudo git pull
+sudo npm install          # only if dependencies changed
+sudo npm run build
+sudo cp -r build/* /var/www/npd-frontend/
+sudo systemctl reload nginx
+```
+
+---
+
+# 🌍 11. DOMAIN SETUP
+
+Add A records in your DNS provider:
 
 | Type | Name | Value          |
 | ---- | ---- | -------------- |
 | A    | api  | 54.235.232.237 |
+| A    | @    | 54.235.232.237 |
+
+> `api` → backend API subdomain  
+> `@` → root domain for frontend (or use `npd-dashboard` as the name if it's a subdomain)
 
 ---
 
-# 🔐 11. SSL (HTTPS) WITH CERTBOT
+# 🔐 12. SSL (HTTPS) WITH CERTBOT
 
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
+
+# Backend domain
 sudo certbot --nginx -d api.npd-dashboard.ugbrands.in
+
+# Frontend domain
+sudo certbot --nginx -d npd-dashboard.ugbrands.in
 ```
 
 Auto-renew test:
@@ -261,20 +404,29 @@ sudo certbot renew --dry-run
 
 ---
 
-# 🔥 12. FINAL ARCHITECTURE
+# 🔥 13. FINAL ARCHITECTURE
 
 ```
-HTTPS Domain → Nginx → Node.js (PM2) → MySQL
+                    ┌─────────────────────────────────────────┐
+                    │              AWS EC2 Server              │
+                    │                                          │
+  HTTPS             │   Nginx                                  │
+npd-dashboard  ───► │   (port 80/443) ──► /var/www/npd-frontend│
+                    │                     (Static React Build)  │
+  HTTPS             │                                          │
+api.npd-dashboard ──► Nginx ──► Node.js (PM2, port 5000) ──► MySQL
+                    │                                          │
+                    └─────────────────────────────────────────┘
 ```
 
 ---
 
 # 🚨 COMMON FIXES
 
-## Nginx default page
+## Nginx default page showing
 
 ```bash
-sudo rm /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo systemctl reload nginx
 ```
 
@@ -285,14 +437,40 @@ pm2 restart all
 pm2 logs
 ```
 
+## Frontend shows blank page (React Router issue)
+
+Make sure Nginx has `try_files $uri /index.html;` — this is required for SPAs so that refreshing a route doesn't return 404.
+
+## Build fails due to memory (large React apps)
+
+```bash
+export NODE_OPTIONS=--max_old_space_size=2048
+sudo npm run build
+```
+
+## Permission denied on /var/www
+
+```bash
+sudo chown -R ubuntu:ubuntu /var/www/online-ops-inventory-frontend
+sudo chown -R www-data:www-data /var/www/npd-frontend
+```
+
+## Nginx config test fails
+
+```bash
+sudo nginx -t        # shows exact error line
+sudo journalctl -u nginx --no-pager -n 50   # recent logs
+```
+
 ---
 
 # 🧠 BEST PRACTICES
 
 * Always use SSH keys (no passwords)
-* Always use PM2
-* Always use Nginx reverse proxy
-* Always enable HTTPS
-* Secure .env (chmod 600)
-
----
+* Always use PM2 for Node.js processes
+* Always use Nginx as a reverse proxy for backend
+* Always serve React builds as static files via Nginx (never `npm start` in production)
+* Always enable HTTPS with Certbot
+* Secure `.env` with `chmod 600 .env`
+* Never run `npm start` in production for frontend — always build and serve static files
+* Keep frontend build folder (`/var/www/npd-frontend`) separate from source code (`/var/www/online-ops-inventory-frontend`)
