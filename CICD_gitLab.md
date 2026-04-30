@@ -349,3 +349,7 @@ server {
 
 }
 ```
+Check certbot
+```
+sudo ls /etc/letsencrypt/live/
+```
