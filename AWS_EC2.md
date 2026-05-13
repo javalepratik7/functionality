@@ -241,6 +241,12 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+IF sudo nginx -t shows Error
+```
+cat etc/nginx/sites-enabled/npd-tracker.ugbrands.in
+and if instade of space othere present to remove it use
+sudo sed -i 's/\xC2\xA0/ /g' /etc/nginx/sites-enabled/npd-tracker.ugbrands.in  
+```
 
 ---
 
