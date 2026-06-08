@@ -334,11 +334,4 @@ console.log = (msg) => logger.info(msg);
 Check Microsoft Graph API docs:
 - https://learn.microsoft.com/en-us/graph/api/planner-post-tasks
 - https://learn.microsoft.com/en-us/graph/api/planner-list-plans
-
-## License
-
-Use as needed for your NPD Dashboard project.
-
----
-
-**Questions?** Check msPlanner-USAGE.js for more examples or refer to msPlanner-CONFIG.js for detailed setup.
+  
