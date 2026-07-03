@@ -102,6 +102,22 @@ S3 bucket → **Permissions** tab → **CORS** → Edit → paste:
 ]
 ```
 
+To give Permission to all
+```
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "PublicReadGetObject",
+			"Effect": "Allow",
+			"Principal": "*",
+			"Action": "s3:GetObject",
+			"Resource": "arn:aws:s3:::<BUCKET NAME>/*"
+		}
+	]
+}
+```
+
 > Skip this if your backend handles all uploads.
 
 ---
