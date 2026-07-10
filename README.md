@@ -231,6 +231,8 @@ Answer honestly — if any are "no", that's your next learning target:
 | Next.js | `NextJS.md` |
 | Razorpay payments | `Razorpay.md` |
 | Stripe payments | `Stripe.md` |
+| Zustand (state management) | `Zustand.md` |
+| GraphQL | `GraphQL.md` |
 | Kubernetes | `KubernetesStudy.md` |
 | Docker | `DockerStudy.md` |
 | Kafka | `Kafka.md` |
